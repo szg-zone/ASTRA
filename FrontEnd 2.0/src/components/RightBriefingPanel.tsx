@@ -307,7 +307,7 @@ export function RightBriefingPanel({
         <div className={`text-xs font-semibold flex items-center justify-between tracking-wide ${titleColor}`}>
           <span>{currentAlert?.status?.replace(/_/g, " ") || "NOMINAL TELEMETRY"}</span>
           <span className="text-[9px] text-[#D3B34A] font-mono font-medium">
-            {currentAlert ? `${currentAlert.unusualness_score.toFixed(2)}σ` : "0.42σ"}
+            {currentAlert ? `${currentAlert.unusualness_score.toFixed(2)}σ` : "--"}
           </span>
         </div>
 
@@ -327,7 +327,7 @@ export function RightBriefingPanel({
                 </span>
               </>
             ) : (
-              "Telemetry operating within baseline nominal 3-sigma tolerance envelope."
+              "No spacecraft-health event data is currently available."
             )}
           </div>
         </div>
@@ -343,8 +343,10 @@ export function RightBriefingPanel({
               </span>
             </div>
             <div>
-              <span className="text-[#668F87]">SIGNAL STATUS:</span>{" "}
-              <span className="text-[#39C98A] font-medium">NOMINAL</span>
+              <span className="text-[#668F87]">EVENT CONTEXT:</span>{" "}
+              <span className="text-[#B8C0BA] font-medium">
+                {currentAlert?.category || "Nominal"}
+              </span>
             </div>
             <div>
               <span className="text-[#668F87]">DETECTOR:</span>{" "}
@@ -375,9 +377,9 @@ export function RightBriefingPanel({
             }`}
           >
             {isKnown
-              ? "KNOWN OPERATIONAL PATTERN MATCH CONFIRMED (Alarm Downgraded)"
+              ? "SIMILAR TO OPERATOR-VALIDATED OPERATIONAL PATTERN"
               : isCritical
-              ? "LABELLED GENUINE ANOMALY (Historical ESA research scenario; Safety Guard Bypassed Memory)"
+              ? "LABELLED GENUINE ANOMALY (Historical ESA research event; memory did not suppress this detector event)"
               : currentAlert?.status === "NOMINAL"
               ? "NOMINAL SPACECRAFT TELEMETRY (No Operator Action Required)"
               : "UNKNOWN UNUSUAL EVENT (Operator Review Required)"}
@@ -386,16 +388,17 @@ export function RightBriefingPanel({
 
         {/* Recommendation */}
         <div className="flex flex-col gap-1 border-t border-[#668F87]/15 pt-1.5 text-[10px]">
-          <div className="text-[10px] font-medium text-[#668F87] tracking-wide">&gt; RECOMMENDATION</div>
+          <div className="text-[10px] font-medium text-[#668F87] tracking-wide">&gt; OPERATOR CONTEXT</div>
           <div className="text-[#B8C0BA] text-[9.5px] leading-relaxed">
-            {currentAlert?.recommended_action || "Continue routine telemetry monitoring."}
+            {currentAlert?.recommended_action || "No operator action is currently required."}
           </div>
           <div className="text-[#71817B] text-[8.5px] leading-relaxed">
-            {currentAlert?.explanation || "Telemetry parameters running within nominal bounds."}
+            {currentAlert?.explanation || "Awaiting spacecraft-health event context."}
           </div>
         </div>
 
-        {/* Human in the Loop Action Buttons with truthful async status */}
+        {/* Operator actions appear only when there is an event to review. */}
+        {currentAlert && currentAlert.status !== "NOMINAL" && (
         <div className="pt-2 border-t border-[#668F87]/15 flex items-center gap-2">
           <button
             onClick={() => handleAction("VALID_OPERATION")}
@@ -426,6 +429,7 @@ export function RightBriefingPanel({
             {feedbackSuccess === "ANOMALY CONFIRMED" ? "[✓] CONFIRMED" : "[ ANOMALY ]"}
           </button>
         </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -453,7 +457,7 @@ export function RightBriefingPanel({
           <div className="flex items-center justify-between pr-1">
             <span className="text-[#668F87] font-medium">AZIMUTH:</span>
             <span className="text-[#B8C0BA] font-mono font-medium">
-              {groundContact?.azimuth_deg ? `${groundContact.azimuth_deg.toFixed(1)}°` : "--°"}
+              {groundContact?.azimuth_deg != null ? `${groundContact.azimuth_deg.toFixed(1)}°` : "--°"}
             </span>
           </div>
           <div className="flex items-center justify-between pl-1">
@@ -463,19 +467,19 @@ export function RightBriefingPanel({
                 groundContact && groundContact.elevation_deg >= 0 ? "text-[#39C98A]" : "text-[#D3B34A]"
               }`}
             >
-              {groundContact?.elevation_deg ? `${groundContact.elevation_deg.toFixed(1)}°` : "--°"}
+              {groundContact?.elevation_deg != null ? `${groundContact.elevation_deg.toFixed(1)}°` : "--°"}
             </span>
           </div>
           <div className="flex items-center justify-between pr-1">
             <span className="text-[#668F87] font-medium">RANGE:</span>
             <span className="text-[#D3B34A] font-mono font-medium">
-              {groundContact?.range_km ? `${groundContact.range_km.toFixed(1)} km` : "-- km"}
+              {groundContact?.range_km != null ? `${groundContact.range_km.toFixed(1)} km` : "-- km"}
             </span>
           </div>
           <div className="flex items-center justify-between pl-1">
             <span className="text-[#668F87] font-medium">MAX ELEVATION:</span>
             <span className="text-[#D3B34A] font-mono font-medium">
-              {groundContact?.max_elevation_deg ? `${groundContact.max_elevation_deg.toFixed(1)}°` : "--°"}
+              {groundContact?.max_elevation_deg != null ? `${groundContact.max_elevation_deg.toFixed(1)}°` : "--°"}
             </span>
           </div>
         </div>
@@ -492,7 +496,7 @@ export function RightBriefingPanel({
           <div>
             <span className="text-[#668F87]">PASS DURATION:</span>{" "}
             <span className="text-[#39C98A] font-mono font-medium">
-              {groundContact?.pass_duration_minutes ? `${groundContact.pass_duration_minutes.toFixed(1)} min` : "-- min"}
+              {groundContact?.pass_duration_minutes != null ? `${groundContact.pass_duration_minutes.toFixed(1)} min` : "-- min"}
             </span>
           </div>
           <div>

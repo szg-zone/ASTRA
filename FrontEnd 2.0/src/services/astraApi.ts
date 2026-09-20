@@ -3,7 +3,7 @@
  * Connects Frontend 2.0 to FastAPI backend services.
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/+$/, "");
 
 export interface PropagatedSatelliteState {
   norad_id: number;
@@ -175,19 +175,28 @@ export interface StatisticsResponse {
 class AstraApiClient {
   private async fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     const targetUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
-    const res = await fetch(targetUrl, {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
-      ...options,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
-    if (!res.ok) {
-      throw new Error(`API Error ${res.status}: ${res.statusText}`);
+    try {
+      const res = await fetch(targetUrl, {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...options?.headers,
+        },
+        ...options,
+        signal: options?.signal ?? controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`API Error ${res.status}: ${res.statusText}`);
+      }
+      return await res.json();
+    } finally {
+      clearTimeout(timeout);
     }
-    return await res.json();
   }
 
   // 1. Global SGP4 Orbital States
@@ -221,7 +230,7 @@ class AstraApiClient {
     return this.fetchJson<CurrentAlertResponse>("/api/alerts/current");
   }
 
-  // 6. Telemetry Waveforms for Current Scenario
+  // 6. Telemetry Waveforms for Current Research Context
   async getTelemetry() {
     return this.fetchJson<{
       scenario: string;
@@ -242,14 +251,7 @@ class AstraApiClient {
     return this.fetchJson<MemoryBankResponse>("/api/memory");
   }
 
-  // 9. Switch Scenario
-  async postScenario(scenarioName: string) {
-    return this.fetchJson<{ message: string; scenario: string }>(`/api/demo/scenario/${scenarioName}`, {
-      method: "POST",
-    });
-  }
-
-  // 10. Human-in-the-Loop Operator Feedback
+  // Human-in-the-Loop Operator Feedback
   async postFeedback(scenarioName: string, operatorLabel: "VALID_OPERATION" | "CONFIRMED_ANOMALY") {
     return this.fetchJson<any>("/api/feedback", {
       method: "POST",
@@ -257,24 +259,17 @@ class AstraApiClient {
     });
   }
 
-  // 11. Reset Demo & Memory Bank
-  async postReset() {
-    return this.fetchJson<{ message: string; scenario: string }>("/api/demo/reset", {
-      method: "POST",
-    });
-  }
-
-  // 12. Data Sources Provenance Status
+  // Data Sources Provenance Status
   async getSourcesStatus(): Promise<SourcesStatusResponse> {
     return this.fetchJson<SourcesStatusResponse>("/api/v1/sources/status");
   }
 
-  // 13. Research Statistics
+  // Research Statistics
   async getStatistics(): Promise<StatisticsResponse> {
     return this.fetchJson<StatisticsResponse>("/api/statistics");
   }
 
-  // 14. Authorized Fleet Status
+  // Authorized Fleet Status
   async getFleet() {
     return this.fetchJson<{
       authorized_count: number;
@@ -284,7 +279,7 @@ class AstraApiClient {
     }>("/api/v1/fleet");
   }
 
-  // 15. Spacecraft Telemetry Channels
+  // Spacecraft Telemetry Channels
   async getSpacecraftOverview(spacecraftId = "ESA_MISSION_1") {
     return this.fetchJson<any>(`/api/v1/spacecraft/${spacecraftId}/overview`);
   }

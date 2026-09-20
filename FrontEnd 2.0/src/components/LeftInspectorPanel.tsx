@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   ObjectDetailResponse,
   CurrentAlertResponse,
@@ -19,10 +19,6 @@ interface LeftInspectorPanelProps {
   researchStats: StatisticsResponse | null;
   fleetStatus: any;
   spacecraftOverview: any;
-  currentScenario: string;
-  onSelectScenario: (scenario: string) => void;
-  onOperatorFeedback: (label: "VALID_OPERATION" | "CONFIRMED_ANOMALY") => Promise<any>;
-  isProcessingAction?: boolean;
 }
 
 export function LeftInspectorPanel({
@@ -35,24 +31,7 @@ export function LeftInspectorPanel({
   researchStats,
   fleetStatus,
   spacecraftOverview,
-  currentScenario,
-  onSelectScenario,
-  onOperatorFeedback,
-  isProcessingAction = false,
 }: LeftInspectorPanelProps) {
-  const [feedbackFeedback, setFeedbackFeedback] = useState<string | null>(null);
-
-  const handleFeedbackClick = async (label: "VALID_OPERATION" | "CONFIRMED_ANOMALY") => {
-    try {
-      await onOperatorFeedback(label);
-      setFeedbackFeedback(label === "VALID_OPERATION" ? "PATTERN LEARNED" : "ANOMALY CONFIRMED");
-      setTimeout(() => setFeedbackFeedback(null), 3000);
-    } catch {
-      setFeedbackFeedback("FEEDBACK FAILED");
-      setTimeout(() => setFeedbackFeedback(null), 3000);
-    }
-  };
-
   const src = objectDetail?.source_values;
   const prop = objectDetail?.derived_propagated_values;
   const satnogs = objectDetail?.satnogs_data;
@@ -98,7 +77,7 @@ export function LeftInspectorPanel({
           <div className="text-sm font-bold text-[#F6D365] tracking-wide flex items-center justify-between">
             <span className="truncate pr-2">{objectDetail?.name || `NORAD ${selectedNoradId}`}</span>
             <span className="text-[10px] text-[#39C98A] shrink-0 font-medium">
-              {objectDetail?.orbit_regime || "LEO"} {prop?.altitude_km ? `${prop.altitude_km.toFixed(0)} km` : ""}
+              {objectDetail?.orbit_regime || "LEO"} {prop?.altitude_km != null ? `${prop.altitude_km.toFixed(0)} km` : ""}
             </span>
           </div>
 
@@ -114,7 +93,7 @@ export function LeftInspectorPanel({
         <div className="border-t border-[#668F87]/20 pt-1.5 flex flex-col gap-1">
           <div className="text-[10px] font-semibold text-[#D3B34A] flex items-center justify-between">
             <span>&gt; CURRENT PROPAGATED STATE (BACKEND SGP4)</span>
-            <span className="text-[8.5px] text-[#39C98A] animate-pulse">● LIVE</span>
+            <span className="text-[8.5px] text-[#39C98A] animate-pulse">● CURRENT PROPAGATION</span>
           </div>
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9.5px]">
             <div className="flex justify-between">
@@ -136,13 +115,13 @@ export function LeftInspectorPanel({
             <div className="flex justify-between">
               <span className="text-[#71817B]">ALTITUDE:</span>
               <span className="text-[#39C98A] font-semibold">
-                {prop?.altitude_km ? `${prop.altitude_km.toFixed(1)} km` : "--"}
+                {prop?.altitude_km != null ? `${prop.altitude_km.toFixed(1)} km` : "--"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-[#71817B]">VELOCITY:</span>
               <span className="text-[#D3B34A] font-semibold">
-                {prop?.velocity_kms ? `${prop.velocity_kms.toFixed(3)} km/s` : "--"}
+                {prop?.velocity_kms != null ? `${prop.velocity_kms.toFixed(3)} km/s` : "--"}
               </span>
             </div>
           </div>
@@ -157,14 +136,14 @@ export function LeftInspectorPanel({
             &gt; SOURCE ORBITAL ELEMENTS (CelesTrak GP/OMM)
           </div>
           <div className="grid grid-cols-2 gap-x-2 text-[#71817B] text-[9px]">
-            <div>INCLINATION: <span className="text-[#B8C0BA]">{src?.inclination_deg ? `${src.inclination_deg.toFixed(4)}°` : "--"}</span></div>
-            <div>ECCENTRICITY: <span className="text-[#B8C0BA]">{src?.eccentricity ? src.eccentricity.toFixed(6) : "--"}</span></div>
-            <div>MEAN MOTION: <span className="text-[#B8C0BA]">{src?.mean_motion ? `${src.mean_motion.toFixed(4)} rev/d` : "--"}</span></div>
-            <div>SEMI-MAJOR AXIS: <span className="text-[#B8C0BA]">{prop?.semi_major_axis_km ? `${prop.semi_major_axis_km.toFixed(1)} km` : "--"}</span></div>
-            <div>APOGEE / PERIGEE: <span className="text-[#B8C0BA]">{prop?.apogee_km && prop?.perigee_km ? `${prop.apogee_km.toFixed(0)} / ${prop.perigee_km.toFixed(0)} km` : "--"}</span></div>
-            <div>ORBIT PERIOD: <span className="text-[#B8C0BA]">{prop?.period_minutes ? `${prop.period_minutes.toFixed(1)} min` : "--"}</span></div>
+            <div>INCLINATION: <span className="text-[#B8C0BA]">{src?.inclination_deg != null ? `${src.inclination_deg.toFixed(4)}°` : "--"}</span></div>
+            <div>ECCENTRICITY: <span className="text-[#B8C0BA]">{src?.eccentricity != null ? src.eccentricity.toFixed(6) : "--"}</span></div>
+            <div>MEAN MOTION: <span className="text-[#B8C0BA]">{src?.mean_motion != null ? `${src.mean_motion.toFixed(4)} rev/d` : "--"}</span></div>
+            <div>SEMI-MAJOR AXIS: <span className="text-[#B8C0BA]">{prop?.semi_major_axis_km != null ? `${prop.semi_major_axis_km.toFixed(1)} km` : "--"}</span></div>
+            <div>APOGEE / PERIGEE: <span className="text-[#B8C0BA]">{prop?.apogee_km != null && prop?.perigee_km != null ? `${prop.apogee_km.toFixed(0)} / ${prop.perigee_km.toFixed(0)} km` : "--"}</span></div>
+            <div>ORBIT PERIOD: <span className="text-[#B8C0BA]">{prop?.period_minutes != null ? `${prop.period_minutes.toFixed(1)} min` : "--"}</span></div>
             <div>ELEMENT EPOCH: <span className="text-[#B8C0BA] truncate block">{src?.element_epoch ? src.element_epoch.substring(0, 19) : "--"}</span></div>
-            <div>ELEMENT AGE: <span className="text-[#D3B34A]">{prop?.element_age_hours ? `${prop.element_age_hours.toFixed(1)} hrs` : "--"}</span></div>
+            <div>ELEMENT AGE: <span className="text-[#D3B34A]">{prop?.element_age_hours != null ? `${prop.element_age_hours.toFixed(1)} hrs` : "--"}</span></div>
           </div>
         </div>
 
@@ -243,13 +222,13 @@ export function LeftInspectorPanel({
                 <span className="text-[#D3B34A] font-semibold">PROPAGATION ENGINE:</span> SGP4 (WGS-72 Numerical Engine on Backend)
               </div>
               <div className="border-b border-[#668F87]/10 pb-1">
-                <span className="text-[#D3B34A] font-semibold">CADENCE:</span> 1 Hz State Propagation (2.0s refresh cycle)
+                <span className="text-[#D3B34A] font-semibold">CADENCE:</span> Full-catalog snapshot updates about every 3s; selected-object WebSocket updates at 1 Hz
               </div>
               <div className="border-b border-[#668F87]/10 pb-1">
                 <span className="text-[#D3B34A] font-semibold">GROUND TRACKS:</span> Instantaneous Azimuth/Elevation to ASTRA Reference Ground Station
               </div>
               <div className="text-[8.5px] text-[#71817B] mt-1 leading-normal">
-                Select any satellite on the 3D Globe Canvas or via the Target Selector on the right to inspect its live orbital elements and trajectory.
+                Select any satellite on the 3D Globe Canvas or via the Target Selector on the right to inspect recent orbital elements and its current SGP4-propagated trajectory.
               </div>
             </div>
           </>
@@ -272,7 +251,7 @@ export function LeftInspectorPanel({
               </div>
               <div>INTEGRATION READINESS: <span className="text-[#39C98A] font-semibold">STANDBY FOR MISSION ADAPTER</span></div>
               <div className="border-t border-[#668F87]/10 pt-1 mt-1 text-[8.5px] text-[#71817B] leading-snug">
-                Scientific Integrity Rule: ASTRA maintains truthful boundaries between public orbital elements and authorized mission feeds. Historical research archives are available under the OPERATIONS and RESEARCH tabs.
+                Data boundary: public orbital elements remain separate from authorized mission telemetry. Historical validation material is available under OPERATIONS and RESEARCH.
               </div>
             </div>
           </>
@@ -344,115 +323,66 @@ export function LeftInspectorPanel({
                   <span>STATUS: <span className="text-[#E05262]">GENUINE ANOMALY</span></span>
                   <span>SCORE: 3.820 / 3.000</span>
                 </div>
-                <div className="text-[8px] text-[#B8C0BA]">Labelled genuine anomaly window (CH_41..CH_46). Historical ESA research scenario. Safety guard prevents false suppression.</div>
+                <div className="text-[8px] text-[#B8C0BA]">Labelled genuine anomaly window (CH_41..CH_46). Historical ESA research event. The safety guard prevents false suppression.</div>
               </div>
             </div>
           </>
         )}
 
-        {/* TAB 5: OPERATIONS & ADAPTIVE EVENT MEMORY EVALUATION */}
+        {/* TAB 5: OPERATIONS & ADAPTIVE EVENT MEMORY */}
         {activeNav === "operations" && (
           <>
             <div className="text-[#D3B34A] font-semibold border-b border-[#668F87]/20 pb-1">
-              &gt; ESA MISSION-1 ADAPTIVE EVENT MEMORY PIPELINE
+              &gt; ADAPTIVE EVENT MEMORY
             </div>
+
             <div className="text-[8.5px] text-[#39C98A] border-b border-[#668F87]/10 pb-1 flex items-center justify-between">
-              <span>1 UNUSUAL EVENT</span>
+              <span>UNUSUAL EVENT</span>
               <span>→</span>
-              <span>2 SIGNATURE</span>
+              <span>CONTEXT</span>
               <span>→</span>
-              <span>3 MEMORY MATCH</span>
+              <span>MEMORY MATCH</span>
+              <span>→</span>
+              <span>OPERATOR REVIEW</span>
             </div>
 
-            <div className="flex flex-col gap-1.5 text-[9.5px] text-slate-300 mt-0.5">
-              <div className="text-[#D3B34A] font-semibold">SELECT EVALUATION TEST SCENARIO:</div>
-              <div className="grid grid-cols-2 gap-1 text-[8.5px]">
-                <button
-                  onClick={() => onSelectScenario("normal")}
-                  disabled={isProcessingAction}
-                  className={`p-1 rounded font-bold transition-colors cursor-pointer border ${
-                    currentScenario === "normal"
-                      ? "bg-[#39C98A]/20 border-[#39C98A] text-[#39C98A]"
-                      : "bg-[#020706] border-[#668F87]/30 text-[#71817B] hover:border-[#D3B34A]"
-                  }`}
-                >
-                  1. NOMINAL TELEMETRY
-                </button>
-                <button
-                  onClick={() => onSelectScenario("rare_first")}
-                  disabled={isProcessingAction}
-                  className={`p-1 rounded font-bold transition-colors cursor-pointer border ${
-                    currentScenario === "rare_first"
-                      ? "bg-[#D3B34A]/20 border-[#D3B34A] text-[#D3B34A]"
-                      : "bg-[#020706] border-[#668F87]/30 text-[#71817B] hover:border-[#D3B34A]"
-                  }`}
-                >
-                  2. RARE EVENT (1ST)
-                </button>
-                <button
-                  onClick={() => onSelectScenario("rare_repeat")}
-                  disabled={isProcessingAction}
-                  className={`p-1 rounded font-bold transition-colors cursor-pointer border ${
-                    currentScenario === "rare_repeat"
-                      ? "bg-[#D3B34A]/20 border-[#D3B34A] text-[#D3B34A]"
-                      : "bg-[#020706] border-[#668F87]/30 text-[#71817B] hover:border-[#D3B34A]"
-                  }`}
-                >
-                  3. RARE EVENT (REPEAT)
-                </button>
-                <button
-                  onClick={() => onSelectScenario("anomaly")}
-                  disabled={isProcessingAction}
-                  className={`p-1 rounded font-bold transition-colors cursor-pointer border ${
-                    currentScenario === "anomaly"
-                      ? "bg-[#E05262]/20 border-[#E05262] text-[#E05262]"
-                      : "bg-[#020706] border-[#668F87]/30 text-[#71817B] hover:border-[#D3B34A]"
-                  }`}
-                >
-                  4. GENUINE ANOMALY
-                </button>
-              </div>
-
-              {/* Action Buttons for Human in the Loop Validation */}
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <button
-                  onClick={() => handleFeedbackClick("VALID_OPERATION")}
-                  disabled={isProcessingAction}
-                  className="flex-1 py-1 rounded bg-[#39C98A]/20 text-[#39C98A] border border-[#39C98A]/40 text-[8.5px] font-bold hover:bg-[#39C98A]/30 transition-colors cursor-pointer"
-                >
-                  {feedbackFeedback === "PATTERN LEARNED" ? "[✓] PATTERN LEARNED" : "VALID OPERATION (LEARN)"}
-                </button>
-                <button
-                  onClick={() => handleFeedbackClick("CONFIRMED_ANOMALY")}
-                  disabled={isProcessingAction}
-                  className="flex-1 py-1 rounded bg-[#E05262]/20 text-[#E05262] border border-[#E05262]/40 text-[8.5px] font-bold hover:bg-[#E05262]/30 transition-colors cursor-pointer"
-                >
-                  {feedbackFeedback === "ANOMALY CONFIRMED" ? "[✓] ANOMALY CONFIRMED" : "CONFIRMED ANOMALY"}
-                </button>
-              </div>
-
-              {/* Memory Bank Status */}
-              <div className="border-t border-[#668F87]/15 pt-1 mt-0.5 text-[8.5px] text-[#71817B]">
-                <div className="text-[#D3B34A] font-bold">ADAPTIVE EVENT MEMORY BANK:</div>
-                <div className="flex justify-between">
-                  <span>STORED PATTERNS:</span>
-                  <span className="text-[#39C98A] font-bold">{memoryBank?.count ?? 0} PATTERNS</span>
+            <div className="flex flex-col gap-2 text-[9.5px] text-slate-300 mt-0.5">
+              <div className="p-2 rounded bg-[#020706] border border-[#668F87]/20">
+                <div className="text-[#B8C0BA] font-semibold text-[9px] mb-1">CURRENT MEMORY STATE</div>
+                <div className="flex justify-between text-[8.5px]">
+                  <span className="text-[#71817B]">STORED PATTERNS</span>
+                  <span className="text-[#39C98A] font-bold">{memoryBank?.count ?? 0}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>MEMORY SIMILARITY:</span>
+                <div className="flex justify-between text-[8.5px]">
+                  <span className="text-[#71817B]">CURRENT ASSESSMENT</span>
                   <span className="text-[#D3B34A] font-bold">
-                    {currentAlert ? `${(currentAlert.similarity_score * 100).toFixed(1)}%` : "0.0%"}
+                    {currentAlert?.status?.replace(/_/g, " ") || "NO EVENT DATA"}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>UNUSUALNESS SCORE:</span>
+                <div className="flex justify-between text-[8.5px]">
+                  <span className="text-[#71817B]">MEMORY SIMILARITY</span>
+                  <span className="text-[#F6D365] font-bold">
+                    {currentAlert ? `${(currentAlert.similarity_score * 100).toFixed(1)}%` : "--"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[8.5px]">
+                  <span className="text-[#71817B]">UNUSUALNESS</span>
                   <span className="text-[#F6D365] font-bold">
                     {currentAlert ? `${currentAlert.unusualness_score.toFixed(3)} / 3.000` : "--"}
                   </span>
                 </div>
-                <div className="text-[#B8C0BA] mt-0.5 truncate">
-                  {currentAlert?.explanation || "Operating within nominal bounds."}
+              </div>
+
+              <div className="p-2 rounded border border-[#D3B34A]/20 bg-[#D3B34A]/5">
+                <div className="text-[#D3B34A] font-bold text-[9px] mb-1">OPERATOR WORKFLOW</div>
+                <div className="text-[8.5px] text-[#B8C0BA] leading-relaxed">
+                  ASTRA detects unusual telemetry, adds command context, checks for similar operator-validated events,
+                  and presents the evidence for human review.
                 </div>
+              </div>
+
+              <div className="text-[8px] text-[#71817B] leading-snug">
+                Current spacecraft-health evidence is based on the ESA Mission-1 historical research archive until an authorized mission telemetry source is connected.
               </div>
             </div>
           </>

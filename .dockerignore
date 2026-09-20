@@ -1,0 +1,30 @@
+.git
+.github
+.venv
+.venv*
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.test-temp
+artifacts
+outputs
+runs
+mlruns
+wandb
+data/raw
+data/interim
+data/processed
+data/external
+data/cache
+app/frontend
+FrontEnd 2.0/node_modules
+FrontEnd 2.0/.next
+FrontEnd 2.0/.env
+FrontEnd 2.0/.env.*
+tests
+scripts
+docs
+.env
+.env.*

@@ -79,16 +79,16 @@ Unmatched events remain unusual events requiring review, and the operator stays 
 
 ## Capabilities
 
-| Workspace / Capability | Current Scope                                                                                                                                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **GLOBAL**             | CelesTrak public active satellite catalog using GP/OMM orbital elements; local SGP4 propagation for current estimated position, altitude, velocity, and orbit paths; ground-contact/pass context, object search, and source freshness/provenance. |
-| **RF OBSERVATIONS**    | SatNOGS Community Ground Network integration in the object inspector: recent RF observations, raw frames, decoded telemetry only when genuinely available, explicit availability states, caching, and source-failure handling. |
-| **FLEET**              | Reserved for authorized mission spacecraft; intentionally empty when no authorized feed is connected.                                                                                                    |
-| **SPACECRAFT**         | Workspace for authorized mission telemetry. Currently shows the disconnected state and does not fabricate spacecraft telemetry.                                                                          |
-| **ALERTS**             | Unusual-event and known-operational-pattern status from the historical research workflow.                                                                                                                |
-| **OPERATIONS**         | Adaptive Event Memory, event evidence, and operator validation using prepared historical research scenarios.                                                                                             |
-| **DATA SOURCES**       | Provider health, source attribution, and cache/freshness state.                                                                                                                                          |
-| **RESEARCH**           | ESA Mission-1 exploratory evaluation on selected telemetry channels.                                                                                                                                     |
+| Workspace / Capability | Current Scope |
+| --- | --- |
+| **GLOBAL** | CelesTrak public active satellite catalog using GP/OMM orbital elements; local SGP4 propagation for current estimated position, altitude, velocity, and orbit paths; ground-contact/pass context, object search, and source freshness/provenance. |
+| **RF OBSERVATIONS** | SatNOGS Community Ground Network integration in the object inspector: recent RF observations, raw frames, decoded telemetry only when genuinely available, explicit availability states, caching, and source-failure handling. |
+| **FLEET** | Reserved for authorized mission spacecraft; intentionally empty when no authorized feed is connected. |
+| **SPACECRAFT** | Workspace for authorized mission telemetry. Currently shows the disconnected state and does not fabricate spacecraft telemetry. |
+| **ALERTS** | Unusual-event and known-operational-pattern status from the historical research workflow. |
+| **OPERATIONS** | Adaptive Event Memory, event evidence, and operator validation using prepared historical research scenarios. |
+| **DATA SOURCES** | Provider health, source attribution, and cache/freshness state. |
+| **RESEARCH** | ESA Mission-1 exploratory evaluation on selected telemetry channels. |
 
 ---
 
@@ -324,6 +324,10 @@ Open the Next.js URL shown in the terminal (normally `http://localhost:3000`). F
 
 The FastAPI root still serves the legacy static interface for compatibility.
 
+Open the Next.js URL shown in the terminal (normally `http://localhost:3000`). The nationals frontend proxies `/api/*` to the FastAPI backend and connects the selected-object WebSocket directly to port 8050.
+
+The FastAPI root still serves the legacy static interface for compatibility.
+
 ### Checks
 
 Backend:
@@ -355,6 +359,7 @@ Railway uses the root `railway.toml` and checks `/health`. No frontend/backend U
 To reproduce the production image locally:
 
 ```
+```bash
 docker build -t astra .
 docker run --rm -p 8050:8050 -e PORT=8050 astra
 ```
@@ -435,7 +440,7 @@ The project brings together contributions across spacecraft telemetry research, 
 | **[Tanay Prasad](https://github.com/TanayP26)**           | Team Leader / Core ML and backend dev |
 | **[Sharvin Tejasvi](https://github.com/szg-zone)**        | Research and UI/UX designer           |
 | **[Samyak Jain](https://github.com/SamyakJain29)**        | Data Analysis and Data Preprocessing  |
-| **[Aditya Pathak](https://github.com/aadityaa1014-code)** | Moral Support                        |
+| **[Aditya Pathak](https://github.com/aadityaa1014-code)** | Moral Support                         |
 | **Arya Gupta**                                            | Research and Presentation             |
 | **Sarthak Garg**                                          | Presentation and Pitching             |
 

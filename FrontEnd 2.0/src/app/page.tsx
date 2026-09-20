@@ -16,16 +16,28 @@ import {
   StatisticsResponse,
 } from "@/services/astraApi";
 
+function toWsUrl(url: string): string {
+  return url.trim().replace(/\/+$/, "").replace(/^https:/, "wss:").replace(/^http:/, "ws:");
+}
+
 function getWsBase(): string {
-  if (process.env.NEXT_PUBLIC_WS_URL) {
-    return process.env.NEXT_PUBLIC_WS_URL;
+  const explicitWs = process.env.NEXT_PUBLIC_WS_URL;
+  if (explicitWs) {
+    return toWsUrl(explicitWs);
   }
+
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (apiBase) {
+    return toWsUrl(apiBase);
+  }
+
   if (
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
   ) {
     return "ws://127.0.0.1:8050";
   }
+
   const protocol = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
   return typeof window !== "undefined" ? `${protocol}//${window.location.host}` : "ws://127.0.0.1:8050";
 }
@@ -37,7 +49,7 @@ export default function Home() {
   const [objectDetail, setObjectDetail] = useState<ObjectDetailResponse | null>(null);
 
   // Operational State
-  const [currentScenario, setCurrentScenario] = useState<string>("normal");
+  const currentScenario = "normal";
   const [currentAlert, setCurrentAlert] = useState<CurrentAlertResponse | null>(null);
   const [memoryBank, setMemoryBank] = useState<MemoryBankResponse | null>(null);
   const [sourcesStatus, setSourcesStatus] = useState<SourcesStatusResponse | null>(null);
@@ -109,93 +121,101 @@ export default function Home() {
     };
   }, [fetchAllData]);
 
-  // 2. Fetch Selected Satellite Detail whenever selectedNoradId changes
+  // 2. Fetch selected-object detail and keep the 1 Hz WebSocket resilient to deploy cold starts.
   useEffect(() => {
     let isCancelled = false;
+    let detailRetry: ReturnType<typeof setTimeout> | null = null;
+    let wsRetry: ReturnType<typeof setTimeout> | null = null;
+    let wsAttempts = 0;
+
     const fetchDetail = async () => {
       try {
         const detail = await astraApi.getObjectDetail(selectedNoradId);
         if (!isCancelled) setObjectDetail(detail);
       } catch {
-        if (!isCancelled) setObjectDetail(null);
+        if (!isCancelled) {
+          setObjectDetail(null);
+          detailRetry = setTimeout(fetchDetail, 3000);
+        }
       }
     };
 
-    fetchDetail();
+    const connectWs = () => {
+      if (isCancelled) return;
 
-    // 3. Connect Live WebSocket for Selected Object (Direct to FastAPI)
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
 
-    try {
-      const wsUrl = `${getWsBase()}/ws/orbit/${selectedNoradId}`;
-      const ws = new WebSocket(wsUrl);
+      try {
+        const wsUrl = `${getWsBase()}/ws/orbit/${selectedNoradId}`;
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.norad_id === selectedNoradId) {
-            setObjectDetail((prev) => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                derived_propagated_values: {
-                  ...prev.derived_propagated_values,
-                  latitude: data.latitude ?? prev.derived_propagated_values.latitude,
-                  longitude: data.longitude ?? prev.derived_propagated_values.longitude,
-                  altitude_km: data.altitude_km ?? prev.derived_propagated_values.altitude_km,
-                  velocity_kms: data.velocity_km_s ?? prev.derived_propagated_values.velocity_kms,
-                  propagated_timestamp: data.timestamp ?? prev.derived_propagated_values.propagated_timestamp,
-                  element_age_hours: data.element_age_hours ?? prev.derived_propagated_values.element_age_hours,
-                },
-                ground_contact: data.ground_contact ?? prev.ground_contact,
-                orbit_path: data.orbit_path?.length ? data.orbit_path : prev.orbit_path,
-              };
-            });
+        ws.onopen = () => {
+          wsAttempts = 0;
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.norad_id === selectedNoradId) {
+              setObjectDetail((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  derived_propagated_values: {
+                    ...prev.derived_propagated_values,
+                    latitude: data.latitude ?? prev.derived_propagated_values.latitude,
+                    longitude: data.longitude ?? prev.derived_propagated_values.longitude,
+                    altitude_km: data.altitude_km ?? prev.derived_propagated_values.altitude_km,
+                    velocity_kms: data.velocity_km_s ?? prev.derived_propagated_values.velocity_kms,
+                    propagated_timestamp: data.timestamp ?? prev.derived_propagated_values.propagated_timestamp,
+                    element_age_hours: data.element_age_hours ?? prev.derived_propagated_values.element_age_hours,
+                  },
+                  ground_contact: data.ground_contact ?? prev.ground_contact,
+                  orbit_path: data.orbit_path?.length ? data.orbit_path : prev.orbit_path,
+                };
+              });
+            }
+          } catch {
+            // Ignore malformed frames and retain the latest valid state.
           }
-        } catch {
-          // Ignored
+        };
+
+        ws.onerror = () => {
+          ws.close();
+        };
+
+        ws.onclose = () => {
+          if (isCancelled) return;
+          wsAttempts += 1;
+          const delay = Math.min(8000, 1000 * 2 ** Math.min(wsAttempts, 3));
+          wsRetry = setTimeout(connectWs, delay);
+        };
+      } catch {
+        if (!isCancelled) {
+          wsAttempts += 1;
+          const delay = Math.min(8000, 1000 * 2 ** Math.min(wsAttempts, 3));
+          wsRetry = setTimeout(connectWs, delay);
         }
-      };
+      }
+    };
 
-      ws.onerror = () => {
-        // Fallback smooth
-      };
-
-      wsRef.current = ws;
-    } catch {
-      // Ignored
-    }
+    void fetchDetail();
+    connectWs();
 
     return () => {
       isCancelled = true;
+      if (detailRetry) clearTimeout(detailRetry);
+      if (wsRetry) clearTimeout(wsRetry);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
     };
   }, [selectedNoradId]);
-
-  // 4. Scenario Switching Action
-  const handleSelectScenario = async (scenarioName: string) => {
-    setIsProcessingAction(true);
-    try {
-      await astraApi.postScenario(scenarioName);
-      setCurrentScenario(scenarioName);
-      const [alertData, memData] = await Promise.all([
-        astraApi.getCurrentAlert(),
-        astraApi.getMemory(),
-      ]);
-      setCurrentAlert(alertData);
-      setMemoryBank(memData);
-    } catch (err) {
-      console.error("Failed to switch scenario:", err);
-    } finally {
-      setIsProcessingAction(false);
-    }
-  };
 
   // 5. Human-in-the-Loop Operator Feedback Action (Strict Async Semantics)
   const handleOperatorFeedback = async (label: "VALID_OPERATION" | "CONFIRMED_ANOMALY") => {
@@ -227,11 +247,16 @@ export default function Home() {
         { id: 25544, name: "ISS (ZARYA)", norad: 25544, cospar: "1998-067A", regime: "LEO" },
       ];
 
-  const threatCount = currentAlert && currentAlert.status !== "NOMINAL" ? 1 : 0;
+  const threatCount =
+    currentAlert &&
+    (currentAlert.status === "UNKNOWN_UNUSUAL_EVENT" ||
+      currentAlert.status === "CRITICAL_COMPONENT_ANOMALY")
+      ? 1
+      : 0;
 
   return (
     <div 
-      className="w-screen h-screen text-[#e2e8f0] flex flex-col overflow-hidden font-mono select-none app-background"
+      className="astra-shell w-screen h-screen text-[#e2e8f0] flex flex-col overflow-hidden select-none app-background"
       style={{
         backgroundImage: "url('/bg-nebula.jpg')",
         backgroundSize: "cover",
@@ -240,7 +265,7 @@ export default function Home() {
         backgroundColor: "#020706",
       }}
     >
-      {/* Top Tactical Header */}
+      {/* Primary navigation */}
       <TacticalHeader
         activeNav={activeNav}
         onSelectNav={setActiveNav}
@@ -248,8 +273,8 @@ export default function Home() {
         threatStatus={currentAlert?.status || "NOMINAL"}
       />
 
-      {/* Main 3-Column Mission Control Workspace */}
-      <main className="flex-1 flex overflow-hidden w-full h-full relative">
+      {/* Main operations workspace */}
+      <main className="astra-main flex-1 flex overflow-hidden w-full h-full relative">
         {/* Left Column: Fixed Spacecraft Inspector + Dynamic Nav Tab Panel */}
         <LeftInspectorPanel
           activeNav={activeNav}
@@ -261,14 +286,19 @@ export default function Home() {
           researchStats={researchStats}
           fleetStatus={fleetStatus}
           spacecraftOverview={spacecraftOverview}
-          currentScenario={currentScenario}
-          onSelectScenario={handleSelectScenario}
-          onOperatorFeedback={handleOperatorFeedback}
-          isProcessingAction={isProcessingAction}
         />
 
-        {/* Center Column: 3D Tactical Orbital Globe Canvas */}
-        <div className="flex-1 h-full relative bg-transparent">
+        {/* Center: orbital visualization */}
+        <div className="astra-globe flex-1 h-full relative bg-transparent">
+          {!isBackendConnected && (
+            <div
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-40 px-3 py-1.5 rounded border border-[#D3B34A]/30 bg-[#020706]/90 text-[#D3B34A] text-[10px] font-semibold tracking-wide"
+              role="status"
+              aria-live="polite"
+            >
+              BACKEND RECONNECTING — RETRYING AUTOMATICALLY
+            </div>
+          )}
           <TacticalOrbitalGlobe
             selectedNoradId={selectedNoradId}
             onSelectNoradId={setSelectedNoradId}
@@ -283,7 +313,7 @@ export default function Home() {
           />
         </div>
 
-        {/* Right Column: Operational Event Briefing, Target Selector & Reference Ground Station Pass */}
+        {/* Right: object selection, event context and ground contact */}
         <RightBriefingPanel
           selectedNoradId={selectedNoradId}
           onSelectNoradId={setSelectedNoradId}
